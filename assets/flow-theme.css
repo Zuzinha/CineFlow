@@ -1,0 +1,50 @@
+/* assets/flow-theme.css */
+:root {
+    --flow-gold: #d4af37;
+    --flow-dark: #0a0a0a;
+    --flow-card: rgba(30, 30, 30, 0.7);
+}
+
+body {
+    background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), 
+                url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070');
+    background-size: cover;
+    background-attachment: fixed;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+}
+
+.navbar-flow {
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid var(--flow-gold);
+}
+
+.card {
+    background: var(--flow-card) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+    border-radius: 15px;
+    color: white;
+}
+
+.stat-number {
+    color: var(--flow-gold);
+    font-size: 3rem;
+    font-weight: 800;
+    text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+.btn-gold {
+    background: var(--flow-gold);
+    color: black;
+    font-weight: bold;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+.btn-gold:hover {
+    background: #f1c40f;
+    transform: scale(1.05);
+}
