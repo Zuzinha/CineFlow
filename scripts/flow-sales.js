@@ -1,8 +1,16 @@
+let editingTicketId = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     refreshSessionList();
     displaySoldTickets();
     
     const saleForm = document.getElementById('saleForm');
+    const cancelTicketButton = document.getElementById('cancelTicketButton');
+
+    if (cancelTicketButton) {
+        cancelTicketButton.addEventListener('click', cancelEditTicket);
+    }
+
     if (saleForm) {
         saleForm.onsubmit = (e) => {
             e.preventDefault();
@@ -42,28 +50,39 @@ function processTicketSale() {
 
     if (!targetSession) return alert("Selecione uma sessão válida.");
 
-    const newTicket = {
-        id: Date.now(),
+    const ticketData = {
         sessionId: sId,
-        buyer: document.getElementById('customerName').value,
-        doc: document.getElementById('cpfField').value,
-        seat: document.getElementById('seat').value.toUpperCase(),
+        buyer: document.getElementById('customerName').value.trim(),
+        doc: document.getElementById('cpfField').value.trim(),
+        seat: document.getElementById('seat').value.toUpperCase().trim(),
         method: document.getElementById('paymentMethod').value,
         value: targetSession.price
     };
 
+    if (!ticketData.buyer || !ticketData.doc || !ticketData.seat) {
+        return alert('Preencha todos os campos do ingresso.');
+    }
+
     const allTickets = FlowIO.get(STORE.TICKETS);
-    
-    // Validação de assento ocupado
-    if (allTickets.some(t => t.sessionId == sId && t.seat == newTicket.seat)) {
+
+    const seatInUse = allTickets.some(t => t.sessionId == sId && t.seat == ticketData.seat && t.id !== editingTicketId);
+    if (seatInUse) {
         return alert("Erro: Este assento já foi vendido para esta sessão.");
     }
 
-    allTickets.push(newTicket);
+    if (editingTicketId) {
+        const i = allTickets.findIndex(t => t.id === editingTicketId);
+        if (i === -1) return alert('Erro ao atualizar venda: ingresso não encontrado.');
+
+        allTickets[i] = { id: editingTicketId, ...ticketData };
+        alert('Venda atualizada com sucesso!');
+    } else {
+        allTickets.push({ id: Date.now(), ...ticketData });
+        alert('Venda registrada com sucesso no CineFlow!');
+    }
+
     FlowIO.save(STORE.TICKETS, allTickets);
-    
-    alert("Venda registrada com sucesso no CineFlow!");
-    document.getElementById('saleForm').reset();
+    cancelEditTicket();
     displaySoldTickets();
 }
 
@@ -74,15 +93,50 @@ function displaySoldTickets() {
 
     document.getElementById('ticketCounter').textContent = tickets.length;
     
-    list.innerHTML = tickets.map((t, i) => `
+    list.innerHTML = tickets.map((t, i) => {
+        const session = FlowIO.get(STORE.SESSIONS).find(s => s.id == t.sessionId);
+        const movie = session ? FlowIO.get(STORE.MOVIES).find(m => m.id == session.mId) : null;
+        return `
         <tr>
             <td class="text-white">${t.buyer}</td>
+            <td>${movie ? movie.title : 'Sessão removida'}</td>
             <td class="text-gold fw-bold">${t.seat}</td>
             <td>${t.method}</td>
             <td><span class="text-success">${FlowIO.formatMoney(t.value)}</span></td>
-            <td><button class="btn btn-sm btn-outline-danger" onclick="voidTicket(${i})">Estornar</button></td>
+            <td>
+                <button class="btn btn-sm btn-outline-info me-1" onclick="startEditTicket(${t.id})">Editar</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="voidTicket(${i})">Estornar</button>
+            </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+}
+
+function startEditTicket(ticketId) {
+    const tickets = FlowIO.get(STORE.TICKETS);
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return alert('Ingresso não encontrado para edição.');
+
+    refreshSessionList();
+    document.getElementById('sessionSelect').value = ticket.sessionId;
+    document.getElementById('customerName').value = ticket.buyer;
+    document.getElementById('cpfField').value = ticket.doc;
+    document.getElementById('seat').value = ticket.seat;
+    document.getElementById('paymentMethod').value = ticket.method;
+
+    editingTicketId = ticketId;
+    document.getElementById('saveTicketButton').textContent = 'ATUALIZAR VENDA';
+    const cancelBtn = document.getElementById('cancelTicketButton');
+    if (cancelBtn) cancelBtn.style.display = 'block';
+}
+
+function cancelEditTicket() {
+    editingTicketId = null;
+    const saleForm = document.getElementById('saleForm');
+    if (saleForm) saleForm.reset();
+    document.getElementById('saveTicketButton').textContent = 'CONFIRMAR VENDA';
+    const cancelBtn = document.getElementById('cancelTicketButton');
+    if (cancelBtn) cancelBtn.style.display = 'none';
 }
 
 function voidTicket(index) {
@@ -91,4 +145,6 @@ function voidTicket(index) {
     tickets.splice(index, 1);
     FlowIO.save(STORE.TICKETS, tickets);
     displaySoldTickets();
+
+    if (editingTicketId) cancelEditTicket();
 }
